@@ -41,7 +41,7 @@ Before using this deployment script, make sure you have the following:
 ### Installation
 
 1. Clone this repository to your local machine:
-git clone https://github.com/yourusername/deployment-script.git
+git clone git@github.com:xplodman/Deployment-Script.git
 
 
 2. Navigate to the project directory:
