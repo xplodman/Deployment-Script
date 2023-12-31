@@ -42,10 +42,35 @@ else
   exit
 fi
 
-# dynamically recreate the variable name "some_variable", stored
-# as a string inside variable `var3`
-env_user_ip_port=$env_user_ip' -p '$env_port
-env_user_ip_site_dir=$env_user_ip':'$env_site_dir
+if [[ -v ${remote_env_name}_user_ip_port ]]; then
+  x="${remote_env_name}_user_ip_port"
+  env_user_ip_port="${!x}"
+else
+  echo "${remote_env_name}_user_ip_port variable not exist"
+  exit
+fi
+
+if [[ -v ${remote_env_name}_user_ip_site_dir ]]; then
+  x="${remote_env_name}_user_ip_site_dir"
+  env_user_ip_site_dir="${!x}"
+else
+  echo "${remote_env_name}_user_ip_site_dir variable not exist"
+  exit
+fi
+
+if [[ -v ${remote_env_name}_private_key ]]; then
+  x="${remote_env_name}_private_key"
+  env_private_key_command="-i ${!x}"
+else
+  env_private_key_command=''
+fi
+
+if [[ -v ${remote_env_name}_ssh_password ]]; then
+  x="${remote_env_name}_ssh_password"
+  env_ssh_password_command="sshpass -p ${!x} "
+else
+  env_ssh_password_command=''
+fi
 
 case $1 in
 
@@ -63,11 +88,11 @@ case $1 in
   action="Download $2 Site to Local"
   ;;
 --ssh)
-  ssh $env_user_ip_port -t "cd "$env_site_dir" && exec bash -l "
+  $env_ssh_password_command ssh $env_user_ip_port -t $env_private_key_command "cd "$env_site_dir" && exec bash -l "
   exit
   ;;
 --db)
-  ssh $env_user_ip_port -t "mysql -u "$env_db_username" "$env_db_name" -p'"$env_db_password"' && exec bash -l "
+  $env_ssh_password_command ssh $env_user_ip_port -t $env_private_key_command "MYSQL_PWD='"$env_db_password"' mysql -u "$env_db_username" "$env_db_name" && exec bash -l "
   exit
   ;;
 --download-db)
@@ -75,13 +100,13 @@ case $1 in
   dest="$local_db_dir"
 
   echo "Dumping $2 Database"
-  ssh $env_user_ip_port -t "cd "$env_site_dir"; MYSQL_PWD='"$env_db_password"' mysqldump --no-tablespaces -u "$env_db_username" "$env_db_name" | gzip -9 > "$env_db_name".sql.gz;"
+  $env_ssh_password_command ssh $env_private_key_command $env_user_ip_port -t "cd "$env_site_dir"; MYSQL_PWD='"$env_db_password"' mysqldump --no-tablespaces -u "$env_db_username" "$env_db_name" | gzip -9 > "$env_db_name".sql.gz;"
 
   echo "Downloading $2 Database to Local"
-  rsync --rsh='ssh -p'$env_port -iavz --progress --no-times --no-perms --checksum --del "$src"/ "$dest" --include=$env_db_name".sql.gz" --exclude="*" --no-g --no-o
+  rsync --rsh="$env_ssh_password_command ssh $env_private_key_command -p"$env_port -iavz --progress --no-times --no-perms --checksum --del "$src"/ "$dest" --include=$env_db_name".sql.gz" --exclude="*" --no-g --no-o
 
   echo "Removing $2 Database from Remote"
-  ssh $env_user_ip_port -t "cd ${env_site_dir}; rm ${env_db_name}.sql.gz"
+  $env_ssh_password_command ssh $env_user_ip_port -t $env_private_key_command "cd ${env_site_dir}; rm ${env_db_name}.sql.gz"
 
   exit
   ;;
@@ -125,7 +150,7 @@ fi
 # Rsync with dry run option
 echo "[Dry Run] $action : $dest"
 
-rsync --rsh="ssh -p"$port -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from=required_scripts/rsync.ignore --dry-run --stats --no-g --no-o
+rsync --rsh="$env_ssh_password_command ssh $env_private_key_command -p"$port -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from=required_scripts/rsync.ignore --stats --no-g --no-o --dry-run
 
 CONT='n'
 read -r -p "> Do you want to continue ($action)?[y:N]" CONT
@@ -136,7 +161,4 @@ Y* | y*) ;;
 esac
 
 # Rsync
-rsync --rsh="ssh -p"$port -iavz --progress --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from=required_scripts/rsync.ignore  --stats --no-g --no-o
-
-# Clear cache after rsync
-ssh $env_user_ip_port -t "cd "$env_site_dir"; php artisan optimize:clear"
+rsync --rsh="$env_ssh_password_command ssh $env_private_key_command -p"$port -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from=required_scripts/rsync.ignore --stats --no-g --no-o --progress

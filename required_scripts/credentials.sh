@@ -10,7 +10,9 @@ special_commands_after_import_db_locally=''
 ## Server credentials
 production_port='22' # Default 22
 production_user_ip='server_user@server_ip'
-production_site_dir='server_path'
+prod_ssh_password='your_ssh_password_if_exists' # Remove it if there is no password
+prod_private_key_identity='your_private_key_path' # Remove it if there is no key
+production_site_dir='server_full_path'
 
 ## Database credentials
 production_db_name='your_production_db_name'
@@ -26,7 +28,7 @@ production_user_ip_site_dir=$production_user_ip':'$production_site_dir
 ## Server credentials
 staging_port='22' # Default 22
 staging_user_ip='server_user@server_ip'
-staging_site_dir='server_path'
+staging_site_dir='server_full_path'
 
 ## Database credentials
 staging_db_name='your_staging_db_name'
