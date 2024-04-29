@@ -27,6 +27,20 @@ else
   echo "${remote_env_name}_db_name variable not exist"
   exit
 fi
+if [[ -v ${remote_env_name}_db_host ]]; then
+  x="${remote_env_name}_db_host"
+  env_db_host="${!x}"
+else
+  echo "${remote_env_name}_db_host variable not exist"
+  exit
+fi
+if [[ -v ${remote_env_name}_db_port ]]; then
+  x="${remote_env_name}_db_port"
+  env_db_port="${!x}"
+else
+  echo "${remote_env_name}_db_port variable not exist"
+  exit
+fi
 if [[ -v ${remote_env_name}_db_username ]]; then
   x="${remote_env_name}_db_username"
   env_db_username="${!x}"
@@ -92,7 +106,7 @@ case $1 in
   exit
   ;;
 --db)
-  $env_ssh_password_command ssh $env_user_ip_port -t $env_private_key_command "MYSQL_PWD='"$env_db_password"' mysql -u "$env_db_username" "$env_db_name" && exec bash -l "
+  $env_ssh_password_command ssh $env_user_ip_port -t $env_private_key_command "MYSQL_PWD='"$env_db_password"' mysql -h "$env_db_host" -P "$env_db_port" -u "$env_db_username" "$env_db_name" && exec bash -l "
   exit
   ;;
 --download-db)
@@ -100,7 +114,7 @@ case $1 in
   dest="$local_db_dir"
 
   echo "Dumping $2 Database"
-  $env_ssh_password_command ssh $env_private_key_command $env_user_ip_port -t "cd "$env_site_dir"; MYSQL_PWD='"$env_db_password"' mysqldump --no-tablespaces -u "$env_db_username" "$env_db_name" | gzip -9 > "$env_db_name".sql.gz;"
+  $env_ssh_password_command ssh $env_private_key_command $env_user_ip_port -t "cd "$env_site_dir"; MYSQL_PWD='"$env_db_password"' mysqldump -h "$env_db_host" -P "$env_db_port" --no-tablespaces -u "$env_db_username" "$env_db_name" | gzip -9 > "$env_db_name".sql.gz;"
 
   echo "Downloading $2 Database to Local"
   rsync --rsh="$env_ssh_password_command ssh $env_private_key_command -p"$env_port -iavz --progress --no-times --no-perms --checksum --del "$src"/ "$dest" --include=$env_db_name".sql.gz" --exclude="*" --no-g --no-o
