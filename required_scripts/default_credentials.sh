@@ -34,6 +34,8 @@ staging_site_dir='server_full_path'
 
 ## Database credentials
 staging_db_name='your_staging_db_name'
+staging_db_db_host='your_production_db_host'
+staging_db_db_port='your_production_db_port' # Default 3306
 staging_db_username='your_staging_db_username'
 staging_db_password='your_staging_db_password'
 
