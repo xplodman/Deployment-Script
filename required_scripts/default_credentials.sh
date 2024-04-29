@@ -43,4 +43,3 @@ staging_db_password='your_staging_db_password'
 staging_user_ip_port=$staging_user_ip' -p '$staging_port
 staging_user_ip_site_dir=$staging_user_ip':'$staging_site_dir
 # End staging environment credentials
-
