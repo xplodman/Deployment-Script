@@ -48,7 +48,7 @@ git clone https://github.com/xplodman/Deployment-Script.git
 cd deployment-script
 
 
-3. Configure the deployment script by editing the necessary credentials in the `required_scripts/credentials.sh` file.
+3. Copy default_credentials.sh to credentials.sh, Configure the deployment script by editing the necessary credentials in the `required_scripts/credentials.sh` file.
 
 4. Make the `deploy_script.sh` file executable:
 chmod +x deploy_script.sh
