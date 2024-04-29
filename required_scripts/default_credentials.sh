@@ -10,8 +10,8 @@ special_commands_after_import_db_locally=''
 ## Server credentials
 production_port='22' # Default 22
 production_user_ip='server_user@server_ip'
-prod_ssh_password='your_ssh_password_if_exists' # Remove it if there is no password
-prod_private_key_identity='your_private_key_path' # Remove it if there is no key
+production_ssh_password='your_ssh_password_if_exists' # Remove it if there is no password
+production_private_key_identity='your_private_key_path' # Remove it if there is no key
 production_site_dir='server_full_path'
 
 ## Database credentials
