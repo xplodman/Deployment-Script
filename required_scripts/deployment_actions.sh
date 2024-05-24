@@ -122,6 +122,13 @@ case $1 in
   echo "Removing $2 Database from Remote"
   $env_ssh_password_command ssh $env_user_ip_port -t $env_private_key_command "cd ${env_site_dir}; rm ${env_db_name}.sql.gz"
 
+  # Split the file if it's larger than 60MB
+  if [ $(stat -c%s "$local_db_dir/$env_db_name.sql.gz") -gt $((60*1024*1024)) ]; then
+    echo "Splitting $env_db_name.sql.gz because it is larger than 60MB"
+    split -b 60m "$local_db_dir/$env_db_name.sql.gz" "$local_db_dir/$env_db_name.sql.gz.part-"
+    rm "$local_db_dir/$env_db_name.sql.gz"
+  fi
+
   exit
   ;;
 --import-db)
@@ -145,12 +152,24 @@ case $1 in
     MYSQL_PWD=$local_db_password mysql -u $local_db_username -e "CREATE DATABASE ${local_db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
   fi
 
+  # Merge split files if they exist
+  if ls "$local_db_dir/$env_db_name.sql.gz.part-"* 1> /dev/null 2>&1; then
+    echo "Merging split files for $env_db_name.sql.gz because it is larger than 60MB"
+    cat "$local_db_dir/$env_db_name.sql.gz.part-"* > "$local_db_dir/$env_db_name.sql.gz"
+  fi
+
   echo "Restoring ($local_db_name) Database"
   zcat "$local_db_dir"/"$env_db_name".sql.gz | MYSQL_PWD=$local_db_password mysql -u $local_db_username $local_db_name
 
   if [[ -n $special_commands_after_import_db_locally ]]; then
     echo "Running special commands after import ($local_db_name) Database"
     MYSQL_PWD=$local_db_password mysql -u $local_db_username -e "$special_commands_after_import_db_locally"
+  fi
+
+  # Split the file if it's larger than 60MB
+  if [ $(stat -c%s "$local_db_dir/$env_db_name.sql.gz") -gt $((60*1024*1024)) ]; then
+    echo "Deleting merged file $local_db_dir/$env_db_name.sql.gz after import because it is larger than 60MB"
+    rm "$local_db_dir/$env_db_name.sql.gz"
   fi
   exit
   ;;
