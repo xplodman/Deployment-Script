@@ -16,7 +16,7 @@ production_site_dir='server_full_path'
 
 ## Database credentials
 production_db_name='your_production_db_name'
-production_db_host='your_production_db_host'
+production_db_host='localhost' # Default 3306
 production_db_port='your_production_db_port' # Default 3306
 production_db_username='your_production_db_username'
 production_db_password='your_production_db_password'
@@ -30,12 +30,14 @@ production_user_ip_site_dir=$production_user_ip':'$production_site_dir
 ## Server credentials
 staging_port='22' # Default 22
 staging_user_ip='server_user@server_ip'
+staging_ssh_password='your_ssh_password_if_exists' # Remove it if there is no password
+staging_private_key_identity='your_private_key_path_if_exists' # Remove it if there is no key
 staging_site_dir='server_full_path'
 
 ## Database credentials
 staging_db_name='your_staging_db_name'
-staging_db_db_host='your_production_db_host'
-staging_db_db_port='your_production_db_port' # Default 3306
+staging_db_host='localhost' # Default 3306
+staging_db_port='your_staging_db_port' # Default 3306
 staging_db_username='your_staging_db_username'
 staging_db_password='your_staging_db_password'
 

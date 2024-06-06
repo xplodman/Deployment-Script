@@ -27,6 +27,7 @@ Managing deployments for web applications across different environments can be a
 - Access the remote database shell.
 - Download the remote database to the local machine.
 - Import a database dump into the local database.
+- Split large databases (>80MB) for easier upload to Git repositories.
 
 ## Getting Started
 
