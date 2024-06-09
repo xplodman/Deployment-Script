@@ -16,7 +16,7 @@ production_site_dir='server_full_path'
 
 ## Database credentials
 production_db_name='your_production_db_name'
-production_db_host='localhost' # Default 3306
+production_db_host='your_production_db_host' # Default 127.0.0.1
 production_db_port='your_production_db_port' # Default 3306
 production_db_username='your_production_db_username'
 production_db_password='your_production_db_password'
