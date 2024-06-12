@@ -1,6 +1,9 @@
 #!/bin/bash
+
+# Define the list of environments
 environments=('production' 'staging') # example ('prod' 'staging')
 
+# Define the list of available actions
 list_of_available_actions='List of actions:
 1. --upload env (Upload Local Site to env)
 2. --download env (Download env Site to Local)
@@ -9,12 +12,11 @@ list_of_available_actions='List of actions:
 5. --download-db env (Download the env database to Local and remove it from the remote after the download is finished)
 6. --import-db env (Import the env database to Local)'
 
-# Including checking file for second argument is exist in environments array or not
-# and declare remote_env_name if exists
-. required_scripts/check_environment_argument.sh
-
-# including credentials file
+# Source the credentials file which contains environment-specific variables
 . required_scripts/credentials.sh
 
-# including deployment actions file
+# Source the script to validate and set environment variables based on input arguments
+. required_scripts/validate_and_set_env.sh
+
+# Source the script containing deployment actions such as rsync and database operations
 . required_scripts/deployment_actions.sh

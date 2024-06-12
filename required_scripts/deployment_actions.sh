@@ -2,27 +2,6 @@
 RSYNC_IGNORE_FILE="required_scripts/rsync.ignore"
 DB_SPLIT_SIZE=$((60 * 1024 * 1024))  # 60MB
 
-check_and_set_env_var() {
-  local var_name="$1"
-  local is_required="$2"
-  local special_format="$3"
-  local env_var="${remote_env_name}_$var_name"
-
-  if [[ -v ${env_var} ]]; then
-    x="${env_var}"
-    if [[ -n "$special_format" ]]; then
-      eval "env_$var_name=\"${special_format//XX/\${!x}}\""
-    else
-      eval "env_$var_name=\${!x}"
-    fi
-  elif [[ "$is_required" == "true" ]]; then
-    echo "Error: ${env_var} variable not exist"
-    exit 1
-  else
-    eval "env_$var_name=''"
-  fi
-}
-
 rsync_action() {
   local action_type="$1"
   local src="$2"
@@ -114,19 +93,6 @@ import_db() {
 }
 
 main() {
-  check_and_set_env_var "port" true
-  check_and_set_env_var "user_ip" true
-  check_and_set_env_var "site_dir" true
-  check_and_set_env_var "db_name" true
-  check_and_set_env_var "db_host" true
-  check_and_set_env_var "db_port" true
-  check_and_set_env_var "db_username" true
-  check_and_set_env_var "db_password" true
-  check_and_set_env_var "user_ip_port" true
-  check_and_set_env_var "user_ip_site_dir" true
-  check_and_set_env_var "private_key" false "-i XX"
-  check_and_set_env_var "ssh_password" false "sshpass -p XX"
-
   case $1 in
     --upload)
       rsync_action "upload" "$local_site_dir" "$env_user_ip_site_dir" "$env_port" "Upload Local Site to $2"

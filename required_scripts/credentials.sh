@@ -1,4 +1,6 @@
-# Local path
+environments=('production' 'staging') # example ('production' 'staging')
+
+# Local env configuration
 local_site_dir=site_directory
 local_db_dir=database_directory
 local_db_name='local_database_name'
