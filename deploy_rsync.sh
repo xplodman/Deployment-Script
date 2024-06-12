@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Define the list of environments
-environments=('production' 'staging') # example ('prod' 'staging')
-
 # Define the list of available actions
 list_of_available_actions='List of actions:
 1. --upload env (Upload Local Site to env)

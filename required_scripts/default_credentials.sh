@@ -1,3 +1,5 @@
+#!/bin/bash
+
 environments=('production' 'staging') # example ('production' 'staging')
 
 # Local env configuration
