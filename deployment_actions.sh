@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Constants
-RSYNC_IGNORE_FILE="required_scripts/rsync.ignore"
+RSYNC_IGNORE_FILE="rsync.ignore"
 DB_SPLIT_SIZE=$((60 * 1024 * 1024))  # 60MB
 
 rsync_action() {

@@ -10,10 +10,10 @@ list_of_available_actions='List of actions:
 6. --import-db env (Import the env database to Local)'
 
 # Source the credentials file which contains environment-specific variables
-. required_scripts/credentials.sh
+. credentials.sh
 
 # Source the script to validate and set environment variables based on input arguments
-. required_scripts/validate_and_set_env.sh
+. validate_and_set_env.sh
 
 # Source the script containing deployment actions such as rsync and database operations
-. required_scripts/deployment_actions.sh
+. deployment_actions.sh
