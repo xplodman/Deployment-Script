@@ -81,7 +81,7 @@ import_db() {
   fi
 
   echo "Restoring ($local_db_name) Database"
-  zcat "$local_db_dir"/"$env_db_name".sql.gz | MYSQL_PWD=$local_db_password mysql -u $local_db_username $local_db_name
+  zcat "$local_db_dir"/"$env_db_name".sql.gz | awk 'NR==1 {if (/enable the sandbox mode/) next} {print}' | MYSQL_PWD=$local_db_password mysql -u $local_db_username $local_db_name
 
   if [[ -n $special_commands_after_import_db_locally ]]; then
     echo "Running special commands after import ($local_db_name) Database"
