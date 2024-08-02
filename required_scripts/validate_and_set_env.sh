@@ -1,45 +1,78 @@
 #!/bin/bash
 
-# Function to check and set environment variables
+# Constants
+ERROR_INVALID_ARGS=1
+ERROR_INVALID_ENV=2
+ERROR_REQUIRED_VAR=3
+
+# Function: log_error
+# Logs an error message with a timestamp to the console and optionally to a log file.
+log_error() {
+  local message="$1"
+  echo "$(date +'%Y-%m-%d %H:%M:%S') ERROR: $message"
+}
+
+# Function: check_and_set_env_var
+# Description:
+#   This function checks if a specified environment variable is set and optionally formats its value.
+#   It handles cases where the variable is required or optional and ensures required variables are not empty.
+# Parameters:
+#   1. var_name (string): The base name of the environment variable to check.
+#   2. is_required (string): A flag ("true" or "false") indicating if the variable is required.
+#   3. special_format (string): An optional format string to modify the variable's value. Use "XX" as a placeholder for the value.
+# Environment Variables:
+#   remote_env_name (string): A prefix used to form the full environment variable name.
 check_and_set_env_var() {
   local var_name="$1"
   local is_required="$2"
   local special_format="$3"
   local env_var="${remote_env_name}_$var_name"
+  local var_value=""
 
-  if [[ -v ${env_var} ]]; then
-    x="${env_var}"
+  # Check if the environment variable is set and not null
+  if [ ! -z "${!env_var+x}" ]; then
+    var_value="${!env_var}"
     if [[ -n "$special_format" ]]; then
-      eval "env_$var_name=\"${special_format//XX/\${!x}}\""
+      eval "env_$var_name=\"${special_format//XX/${var_value}}\""
     else
-      eval "env_$var_name=\${!x}"
+      eval "env_$var_name=\${var_value}"
     fi
-  elif [[ "$is_required" == "true" ]]; then
-    echo "Error: ${env_var} variable not exist"
-    exit 1
-  else
+  fi
+
+  # Check if the variable is required, must not be empty, and set value accordingly
+  if [[ "$is_required" == "true" && ( -z "${!env_var+x}" || -z "${!env_var}" ) ]]; then
+    log_error "${env_var} variable is required but not set or is empty"
+    exit $ERROR_REQUIRED_VAR
+  elif [[ "$is_required" != "true" && ( -z "${!env_var+x}" || -z "${!env_var}" ) ]]; then
     eval "env_$var_name=''"
   fi
 }
 
+# Function: show_help
+# Description:
+#   Displays usage instructions and available options.
+show_help() {
+  echo "Usage: $0 <action> <environment>"
+  echo "Available actions: ${list_of_available_actions}"
+  echo "Available environments:"
+  printf '%s\n' "${environments[@]}"
+}
+
+# Main function
 main() {
   # Check if both arguments are provided
-  if [[ ! -n "$1" || ! -n "$2" ]]; then
-    echo -e "You must add options when you run this file."
-    echo -e "${list_of_available_actions}"
-    echo -e "List of available environments:"
-    echo -e "${environments}"
-    exit 1
+  if [[ "$1" == "--help" || -z "$1" || -z "$2" ]]; then
+    show_help
+    exit $ERROR_INVALID_ARGS
   fi
 
   # Check if the second argument is a valid environment
   if [[ ! -z "$2" ]] && printf '%s\0' "${environments[@]}" | grep -Fxqz -- "$2"; then
     remote_env_name=$2
   else
-    printf "There is no environment with this name (%s).\n" "$2"
-    echo "Available environments are:"
-    printf '%s\n' "${environments[@]}"
-    exit 1
+    log_error "There is no environment with this name ($2)."
+    show_help
+    exit $ERROR_INVALID_ENV
   fi
 
   # Check and set required environment variables
