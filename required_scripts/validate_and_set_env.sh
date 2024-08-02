@@ -48,6 +48,16 @@ check_and_set_env_var() {
   fi
 }
 
+# Function: combining_credentials_variables
+# Combines user, IP, port, and site directory for a given remote environment.
+combining_credentials_variables(){
+    # Create <env_name>_user_ip_port variable
+    eval "${remote_env_name}_user_ip_port=\$${remote_env_name}_user_ip' -p '\$${remote_env_name}_port"
+
+    # Create <env_name>_user_ip_site_dir variable
+    eval "${remote_env_name}_user_ip_site_dir=\$${remote_env_name}_user_ip':'\$${remote_env_name}_site_dir"
+}
+
 # Function: show_help
 # Description:
 #   Displays usage instructions and available options.
@@ -74,6 +84,8 @@ main() {
     show_help
     exit $ERROR_INVALID_ENV
   fi
+
+  combining_credentials_variables
 
   # Check and set required environment variables
   check_and_set_env_var "port" true
