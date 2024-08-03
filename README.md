@@ -27,6 +27,7 @@ Managing deployments for web applications across different environments can be a
 - Access the remote database shell.
 - Download the remote database to the local machine.
 - Import a database dump into the local database.
+- Upload a local database to the remote environment.
 - Split large databases (>80MB) for easier upload to Git repositories.
 
 ## Getting Started
@@ -74,6 +75,7 @@ The script supports the following actions:
 - `--db env`: Access the remote database shell.
 - `--download-db env`: Download the remote database to the local machine.
 - `--import-db env`: Import a database dump into the local database.
+- `--upload-db env`: Upload the local database to the specified environment.
 
 Replace `env` with the desired environment (e.g., production, staging).
 
@@ -84,9 +86,3 @@ Before using the deployment script, you need to configure the necessary credenti
 ## Contributing
 
 Contributions are welcome! If you find any issues or have suggestions for improvements, feel free to open an issue or submit a pull request.
-
----
-
-For more information, please refer to the official documentation or contact the project maintainer.
-
-
