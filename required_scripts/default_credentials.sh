@@ -25,11 +25,6 @@ production_db_port='3306' # Default 3306
 production_db_username='your_production_db_username'
 production_db_password='your_production_db_password'
 
-## Combining credentials variables
-production_user_ip_port=$production_user_ip' -p '$production_port
-production_user_ip_site_dir=$production_user_ip':'$production_site_dir
-# End production environment credentials
-
 # Start staging environment credentials
 ## Server credentials
 staging_port='22' # Default 22
@@ -44,8 +39,3 @@ staging_db_host='127.0.0.1' # Default 127.0.0.1
 staging_db_port='3306' # Default 3306
 staging_db_username='your_staging_db_username'
 staging_db_password='your_staging_db_password'
-
-## Combining credentials variables
-staging_user_ip_port=$staging_user_ip' -p '$staging_port
-staging_user_ip_site_dir=$staging_user_ip':'$staging_site_dir
-# End staging environment credentials
