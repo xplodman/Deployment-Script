@@ -12,6 +12,13 @@ log_error() {
   echo "$(date +'%Y-%m-%d %H:%M:%S') ERROR: $message"
 }
 
+# Function: log_info
+# Logs an info message with a timestamp to the console and optionally to a log file.
+log_info() {
+  local message="$1"
+  echo "$(date +'%Y-%m-%d %H:%M:%S') INFO: $message"
+}
+
 # Function: check_and_set_env_var
 # Description:
 #   This function checks if a specified environment variable is set and optionally formats its value.
@@ -62,6 +69,7 @@ combining_credentials_variables(){
 # Description:
 #   Displays usage instructions and available options.
 show_help() {
+  log_info 'Usage instructions and available options.'
   echo "Usage: $0 <action> <environment>"
   echo "Available actions: ${list_of_available_actions}"
   echo "Available environments:"
