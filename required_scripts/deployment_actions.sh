@@ -4,6 +4,24 @@
 RSYNC_IGNORE_FILE="required_scripts/rsync.ignore"
 DB_SPLIT_SIZE=$((60 * 1024 * 1024))  # 60MB
 
+# Function to prompt the user for confirmation
+
+# Function to prompt the user for confirmation
+prompt_user_confirmation() {
+  local action_description="$1"
+  local CONT='n'
+
+  read -r -p "> You are about to $action_description. Do you wish to proceed? [y/N]: " CONT
+
+  case $CONT in
+    Y* | y*)
+      return 0 ;; # Return true (success) if the user confirms
+    *)
+      echo "Operation cancelled by the user."
+      return 1 ;; # Return false (failure) if the user cancels
+  esac
+}
+
 rsync_action() {
   local action_type="$1"
   local src="$2"
@@ -15,13 +33,10 @@ rsync_action() {
   log_info "[Dry Run] $action_msg : $dest"
   rsync --rsh="$env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" --stats --no-g --no-o --dry-run
 
-  CONT='n'
-  read -r -p "> Do you want to continue ($action_msg)?[y:N]" CONT
-
-  case $CONT in
-    Y* | y*) ;;
-    *) exit ;;
-  esac
+  # Confirm action with user
+  if ! prompt_user_confirmation "$action_msg"; then
+    exit 1
+  fi
 
   # Rsync
   rsync --rsh="$env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" --stats --no-g --no-o --progress
@@ -59,17 +74,15 @@ download_db_dump() {
 import_db() {
   DB_EXIST=$(MYSQL_PWD=$local_db_password mysqlshow --user=$local_db_username $local_db_name | grep -v Wildcard | grep -o $local_db_name)
 
-  if [ "$DB_EXIST" == $local_db_name ]; then
-    read -r -p "(${local_db_name}) database already exists - are you sure to drop (${local_db_name}) database? (y/n)?" choice
-    case "$choice" in
-      Y* | y*)
-        log_info "Deleting ($local_db_name) Database"
-        MYSQL_PWD=$local_db_password mysql -u $local_db_username -e "DROP DATABASE IF EXISTS ${local_db_name};"
-        log_info "Creating ($local_db_name) Database"
-        MYSQL_PWD=$local_db_password mysql -u $local_db_username -e "CREATE DATABASE ${local_db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
-        ;;
-      *) exit ;;
-    esac
+  if [ "$DB_EXIST" == "$local_db_name" ]; then
+    if ! prompt_user_confirmation "drop and recreate the existing ($local_db_name) database"; then
+      exit 1
+    fi
+
+    log_info "Deleting ($local_db_name) Database"
+    MYSQL_PWD=$local_db_password mysql -u $local_db_username -e "DROP DATABASE IF EXISTS ${local_db_name};"
+    log_info "Creating ($local_db_name) Database"
+    MYSQL_PWD=$local_db_password mysql -u $local_db_username -e "CREATE DATABASE ${local_db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
   else
     log_info "Creating ($local_db_name) Database"
     MYSQL_PWD=$local_db_password mysql -u $local_db_username -e "CREATE DATABASE ${local_db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
@@ -95,6 +108,13 @@ import_db() {
 }
 
 upload_db_to_env() {
+  local action_msg="upload the local database ($local_db_name) to the remote environment ($remote_env_name). This will replace the existing database on the remote server"
+
+  # Call the confirmation function
+  if ! prompt_user_confirmation "$action_msg"; then
+    exit 1
+  fi
+
   # Create a dump of the local database
   log_info "Creating a dump of the local database ($local_db_name)"
   MYSQL_PWD=$local_db_password mysqldump -u $local_db_username $local_db_name | gzip -9 > "$local_db_dir/$local_db_name.sql.gz"
