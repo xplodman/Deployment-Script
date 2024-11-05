@@ -2,7 +2,8 @@
 
 ## Constants
 RSYNC_IGNORE_FILE="required_scripts/rsync.ignore"
-DB_SPLIT_SIZE=$((60 * 1024 * 1024))  # 60MB
+DB_SPLIT_SIZE_MB=${db_split_threshold:-60}  # Default to 60MB if not set
+DB_SPLIT_SIZE=$((DB_SPLIT_SIZE_MB * 1024 * 1024))  # 60MB
 
 # Function to prompt the user for confirmation
 
@@ -63,10 +64,10 @@ download_db_dump() {
   log_info "Removing $remote_env_name Database from Remote"
   $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; rm $env_db_name.sql.gz"
 
-  # Split the file if it's larger than 60MB
+  # Split the file if it's larger than the specified size
   if [ $(stat -c%s "$local_db_dir/$env_db_name.sql.gz") -gt $DB_SPLIT_SIZE ]; then
-    log_info "Splitting $env_db_name.sql.gz because it is larger than 60MB"
-    split -b 60m "$local_db_dir/$env_db_name.sql.gz" "$local_db_dir/$env_db_name.sql.gz.part-"
+    log_info "Splitting $env_db_name.sql.gz because it is larger than ${DB_SPLIT_SIZE_MB}MB"
+    split -b "${DB_SPLIT_SIZE_MB}m" "$local_db_dir/$env_db_name.sql.gz" "$local_db_dir/$env_db_name.sql.gz.part-"
     rm "$local_db_dir/$env_db_name.sql.gz"
   fi
 }
@@ -89,7 +90,7 @@ import_db() {
   fi
 
   if ls "$local_db_dir/$env_db_name.sql.gz.part-"* 1> /dev/null 2>&1; then
-    log_info "Merging split files for $env_db_name.sql.gz because it is larger than 60MB"
+    log_info "Merging split files for $env_db_name.sql.gz because it is larger than ${DB_SPLIT_SIZE_MB}MB"
     cat "$local_db_dir/$env_db_name.sql.gz.part-"* > "$local_db_dir/$env_db_name.sql.gz"
   fi
 
@@ -102,7 +103,7 @@ import_db() {
   fi
 
   if [ $(stat -c%s "$local_db_dir/$env_db_name.sql.gz") -gt $DB_SPLIT_SIZE ]; then
-    log_info "Deleting merged file $local_db_dir/$env_db_name.sql.gz after import because it is larger than 60MB"
+    log_info "Deleting merged file $local_db_dir/$env_db_name.sql.gz after import because it is larger than ${DB_SPLIT_SIZE_MB}MB"
     rm "$local_db_dir/$env_db_name.sql.gz"
   fi
 }

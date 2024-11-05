@@ -9,6 +9,7 @@ local_db_name='local_database_name'
 local_db_username='local_database_username'
 local_db_password='local_database_password'
 special_commands_after_import_db_locally=''
+db_split_threshold=60
 
 # Start production environment credentials
 ## Server credentials
