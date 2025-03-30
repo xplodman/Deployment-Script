@@ -41,6 +41,11 @@ rsync_action() {
 
   # Rsync
   rsync --rsh="$env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" --stats --no-g --no-o --progress
+
+  if [[ -n $special_commands_after_upload_to_environment ]]; then
+    log_info "Running special commands after import upload to environment"
+    $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; $special_commands_after_upload_to_environment"
+  fi
 }
 
 execute_ssh_command() {
