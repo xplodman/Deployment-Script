@@ -110,6 +110,11 @@ main() {
   # Check and set optional environment variables with special formats
   check_and_set_env_var "private_key" false "-i XX"
   check_and_set_env_var "ssh_password" false "sshpass -p XX"
+
+  # Optional MongoDB variables (used by --download-mongo-db)
+  # Remote (environment) Mongo
+  check_and_set_env_var "mongo_uri" false
+  check_and_set_env_var "mongo_db" false
 }
 
 # Run the main function with provided arguments

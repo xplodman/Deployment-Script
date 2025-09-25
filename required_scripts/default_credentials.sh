@@ -12,6 +12,10 @@ special_commands_after_import_db_locally=''
 special_commands_after_upload_to_environment=''
 db_split_threshold=60
 
+# Local MongoDB configuration (used by --download-mongo-db)
+local_mongo_uri='mongodb://localhost:27017' # Remove it if there is no local mongo
+local_mongo_db='local_mongo_database_name' # Remove it if there is no local mongo
+
 # Start production environment credentials
 ## Server credentials
 production_port='22' # Default 22
@@ -27,6 +31,10 @@ production_db_port='3306' # Default 3306
 production_db_username='your_production_db_username'
 production_db_password='your_production_db_password'
 
+# Production MongoDB
+production_mongo_uri='mongodb://ip:port'
+production_mongo_db='mongo-db-name'
+
 # Start staging environment credentials
 ## Server credentials
 staging_port='22' # Default 22
@@ -41,3 +49,7 @@ staging_db_host='127.0.0.1' # Default 127.0.0.1
 staging_db_port='3306' # Default 3306
 staging_db_username='your_staging_db_username'
 staging_db_password='your_staging_db_password'
+
+# Staging MongoDB
+staging_mongo_uri='mongodb://ip:port'
+staging_mongo_db='mongo-db-name'

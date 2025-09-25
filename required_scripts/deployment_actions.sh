@@ -147,6 +147,26 @@ upload_db_to_env() {
   rm "$local_db_dir/$local_db_name.sql.gz"
 }
 
+download_mongo_db() {
+  local source_uri="${env_mongo_uri}"
+  local source_db="${env_mongo_db}"
+  local target_uri="${local_mongo_uri}"
+  local target_db="${local_mongo_db}"
+
+  if [[ -z "$source_uri" || -z "$source_db" || -z "$target_uri" || -z "$target_db" ]]; then
+    log_error "MongoDB variables are missing. Ensure <env>_mongo_uri, <env>_mongo_db, local_mongo_uri, and local_mongo_db are set."
+    exit 1
+  fi
+
+  local action_msg="drop local MongoDB database ($target_db) and clone from ($source_db) at ($source_uri)"
+  if ! prompt_user_confirmation "$action_msg"; then
+    exit 1
+  fi
+
+  log_info "Dropping local database ($target_db) and cloning from ($source_uri/$source_db) to ($target_uri/$target_db)"
+  /bin/bash -c "mongosh ${target_uri}/${target_db} --eval 'db.dropDatabase()' && mongodump --uri='${source_uri}' --db='${source_db}' --archive --gzip | mongorestore --uri='${target_uri}' --archive --gzip --nsFrom='${source_db}.*' --nsTo='${target_db}.*'"
+}
+
 main() {
   case $1 in
     --upload)
@@ -169,6 +189,9 @@ main() {
       ;;
     --upload-db)
       upload_db_to_env
+      ;;
+    --download-mongo-db)
+      download_mongo_db
       ;;
     *)
       echo -e "${list_of_available_actions}"
