@@ -92,6 +92,7 @@ production_port='22'
 production_user_ip='username@server_ip'
 production_ssh_password='your_ssh_password'  # Remove if using key-based auth
 production_private_key='-i /path/to/private_key'  # Remove if using password auth
+production_private_key_password='your_private_key_password'  # Remove if private key has no password
 production_site_dir='/var/www/your_site'
 
 # Database credentials
@@ -100,6 +101,29 @@ production_db_host='127.0.0.1'
 production_db_port='3306'
 production_db_username='your_db_user'
 production_db_password='your_db_password'
+```
+
+### 3. Authentication Methods
+
+The script supports multiple SSH authentication methods:
+
+#### Method 1: SSH Key with Password (Recommended)
+```bash
+production_private_key='-i /path/to/private_key'
+production_private_key_password='your_private_key_password'
+# Remove production_ssh_password line
+```
+
+#### Method 2: SSH Key without Password
+```bash
+production_private_key='-i /path/to/private_key'
+# Remove production_ssh_password and production_private_key_password lines
+```
+
+#### Method 3: SSH Password Authentication
+```bash
+production_ssh_password='sshpass -p your_ssh_password'
+# Remove production_private_key and production_private_key_password lines
 ```
 
 ## 🎯 Usage
@@ -237,6 +261,7 @@ error_log              # Error logs
 ## 🔒 Security Features
 
 - **SSH Key Support**: Primary authentication method
+- **Password-Protected Private Keys**: Support for private keys with passphrases
 - **Password Fallback**: SSH password authentication when needed
 - **Strict Host Key Checking**: Prevents man-in-the-middle attacks
 - **Credential Isolation**: Separate configuration file for sensitive data

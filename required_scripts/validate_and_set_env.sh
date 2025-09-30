@@ -109,6 +109,7 @@ main() {
 
   # Check and set optional environment variables with special formats
   check_and_set_env_var "private_key" false "-i XX"
+  check_and_set_env_var "private_key_password" false "sshpass -P passphrase -p XX"
   check_and_set_env_var "ssh_password" false "sshpass -p XX"
 
   # Optional MongoDB variables (used by --download-mongo-db)

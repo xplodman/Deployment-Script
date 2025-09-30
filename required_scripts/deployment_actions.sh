@@ -32,7 +32,7 @@ rsync_action() {
 
   # Rsync with dry run option
   log_info "[Dry Run] $action_msg : $dest"
-  rsync --rsh="$env_ssh_password ssh $env_private_key -o StrictHostKeyChecking=accept-new -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" --stats --no-g --no-o --dry-run
+  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" --stats --no-g --no-o --dry-run
 
   # Confirm action with user
   if ! prompt_user_confirmation "$action_msg"; then
@@ -40,20 +40,20 @@ rsync_action() {
   fi
 
   # Rsync
-  rsync --rsh="$env_ssh_password ssh $env_private_key -o StrictHostKeyChecking=accept-new -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" --stats --no-g --no-o --progress
+  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" --stats --no-g --no-o --progress
 
   if [[ -n $special_commands_after_upload_to_environment ]]; then
     log_info "Running special commands after import upload to environment"
-    $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; $special_commands_after_upload_to_environment"
+    $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; $special_commands_after_upload_to_environment"
   fi
 }
 
 execute_ssh_command() {
-  $env_ssh_password ssh $env_user_ip_port -t $env_private_key -o StrictHostKeyChecking=accept-new "cd $env_site_dir && exec bash -l"
+  $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir && exec bash -l"
 }
 
 execute_db_command() {
-  $env_ssh_password ssh $env_user_ip_port -t $env_private_key -o StrictHostKeyChecking=accept-new "MYSQL_PWD='$env_db_password' mysql -h $env_db_host -P $env_db_port -u $env_db_username $env_db_name && exec bash -l"
+  $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "MYSQL_PWD='$env_db_password' mysql -h $env_db_host -P $env_db_port -u $env_db_username $env_db_name && exec bash -l"
 }
 
 download_db_dump() {
@@ -61,25 +61,19 @@ download_db_dump() {
   dest="$local_db_dir"
 
   log_info "Dumping $remote_env_name Database"
+  $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; MYSQL_PWD='$env_db_password' mysqldump -h $env_db_host -P $env_db_port --no-tablespaces -u $env_db_username $env_db_name | gzip -9 > $env_db_name.sql.gz;"
 
-  if $env_ssh_password ssh $env_user_ip_port -t $env_private_key "command -v mysqldump >/dev/null 2>&1"; then
-    # Remote mysqldump available
-    $env_ssh_password ssh $env_user_ip_port -t $env_private_key -o StrictHostKeyChecking=accept-new \
-      "cd $env_site_dir; MYSQL_PWD='$env_db_password' mysqldump -h $env_db_host -P $env_db_port --no-tablespaces -u $env_db_username $env_db_name | gzip -9 > $env_db_name.sql.gz;"
+  log_info "Downloading $remote_env_name Database to Local"
+  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$env_port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --include=$env_db_name".sql.gz" --exclude="*" --no-g --no-o --progress
 
-    log_info "Downloading $remote_env_name Database to Local"
-    rsync --rsh="$env_ssh_password ssh $env_private_key -o StrictHostKeyChecking=accept-new -p$env_port" -iavz \
-      --no-times --no-perms --checksum --del "$src"/ "$dest" \
-      --include=$env_db_name".sql.gz" --exclude="*" --no-g --no-o --progress
+  log_info "Removing $remote_env_name Database from Remote"
+  $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; rm $env_db_name.sql.gz"
 
-    log_info "Removing $remote_env_name Database from Remote"
-    $env_ssh_password ssh $env_user_ip_port -t $env_private_key -o StrictHostKeyChecking=accept-new "cd $env_site_dir; rm $env_db_name.sql.gz"
-  else
-    # Fallback: dump locally
-    log_info "mysqldump not found on remote. Dumping locally instead."
-    MYSQL_PWD=$env_db_password mysqldump --no-tablespaces --skip-lock-tables \
-      -h $env_db_host -P $env_db_port -u $env_db_username $env_db_name \
-      | gzip -9 > "$local_db_dir/$env_db_name.sql.gz"
+  # Split the file if it's larger than the specified size
+  if [ $(stat -c%s "$local_db_dir/$env_db_name.sql.gz") -gt $DB_SPLIT_SIZE ]; then
+    log_info "Splitting $env_db_name.sql.gz because it is larger than ${DB_SPLIT_SIZE_MB}MB"
+    split -b "${DB_SPLIT_SIZE_MB}m" "$local_db_dir/$env_db_name.sql.gz" "$local_db_dir/$env_db_name.sql.gz.part-"
+    rm "$local_db_dir/$env_db_name.sql.gz"
   fi
 }
 
@@ -133,38 +127,18 @@ upload_db_to_env() {
 
   # Upload the database dump to the remote server
   log_info "Uploading the local database dump to the remote server ($remote_env_name)"
-  rsync --rsh="$env_ssh_password ssh $env_private_key -p$env_port" -iavz --no-times --no-perms --checksum "$local_db_dir/$local_db_name.sql.gz" "$env_user_ip_site_dir" --no-g --no-o --progress
+  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$env_port" -iavz --no-times --no-perms --checksum "$local_db_dir/$local_db_name.sql.gz" "$env_user_ip_site_dir" --no-g --no-o --progress
 
   # Import the database on the remote server
   log_info "Importing the uploaded database dump on the remote server"
-  $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; gunzip < $local_db_name.sql.gz | MYSQL_PWD='$env_db_password' mysql -h $env_db_host -P $env_db_port -u $env_db_username $env_db_name"
+  $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; gunzip < $local_db_name.sql.gz | MYSQL_PWD='$env_db_password' mysql -h $env_db_host -P $env_db_port -u $env_db_username $env_db_name"
 
   # Remove the uploaded dump from the remote server
   log_info "Removing the uploaded database dump from the remote server"
-  $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; rm $local_db_name.sql.gz"
+  $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; rm $local_db_name.sql.gz"
 
   # Clean up local dump
   rm "$local_db_dir/$local_db_name.sql.gz"
-}
-
-download_mongo_db() {
-  local source_uri="${env_mongo_uri}"
-  local source_db="${env_mongo_db}"
-  local target_uri="${local_mongo_uri}"
-  local target_db="${local_mongo_db}"
-
-  if [[ -z "$source_uri" || -z "$source_db" || -z "$target_uri" || -z "$target_db" ]]; then
-    log_error "MongoDB variables are missing. Ensure <env>_mongo_uri, <env>_mongo_db, local_mongo_uri, and local_mongo_db are set."
-    exit 1
-  fi
-
-  local action_msg="drop local MongoDB database ($target_db) and clone from ($source_db) at ($source_uri)"
-  if ! prompt_user_confirmation "$action_msg"; then
-    exit 1
-  fi
-
-  log_info "Dropping local database ($target_db) and cloning from ($source_uri/$source_db) to ($target_uri/$target_db)"
-  /bin/bash -c "mongosh ${target_uri}/${target_db} --eval 'db.dropDatabase()' && mongodump --uri='${source_uri}' --db='${source_db}' --archive --gzip | mongorestore --uri='${target_uri}' --archive --gzip --nsFrom='${source_db}.*' --nsTo='${target_db}.*'"
 }
 
 main() {
@@ -189,9 +163,6 @@ main() {
       ;;
     --upload-db)
       upload_db_to_env
-      ;;
-    --download-mongo-db)
-      download_mongo_db
       ;;
     *)
       echo -e "${list_of_available_actions}"
