@@ -26,6 +26,7 @@ production_private_key_password='your_private_key_password_if_exists' # Remove i
 production_site_dir='server_full_path'
 
 ## Database credentials
+production_db_access_method='through_env' # Options: 'through_env' (access through environment server) or 'direct' (direct access from your machine)
 production_db_name='your_production_db_name'
 production_db_host='127.0.0.1' # Default 127.0.0.1
 production_db_port='3306' # Default 3306
@@ -46,6 +47,7 @@ staging_private_key_password='your_private_key_password_if_exists' # Remove it i
 staging_site_dir='server_full_path'
 
 ## Database credentials
+staging_db_access_method='through_env' # Options: 'through_env' (access through environment server) or 'direct' (direct access from your machine)
 staging_db_name='your_staging_db_name'
 staging_db_host='127.0.0.1' # Default 127.0.0.1
 staging_db_port='3306' # Default 3306

@@ -10,7 +10,8 @@ list_of_available_actions='List of actions:
 5. --download-db env (Download the env database to Local and remove it from the remote after the download is finished)
 6. --import-db env (Import the env database to Local)
 7. --upload-db env (Upload Local database to env)
-8. --download-mongo-db env (Clone a remote MongoDB database to local MongoDB)'
+8. --clone-db source_env dest_env (Clone database from one environment to another)
+9. --download-mongo-db env (Clone a remote MongoDB database to local MongoDB)'
 
 # Source the credentials file which contains environment-specific variables
 . required_scripts/credentials.sh

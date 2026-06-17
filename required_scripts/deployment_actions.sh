@@ -53,24 +53,36 @@ execute_ssh_command() {
 }
 
 execute_db_command() {
-  $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "MYSQL_PWD='$env_db_password' mysql -h $env_db_host -P $env_db_port -u $env_db_username $env_db_name && exec bash -l"
+  if [[ "${env_db_access_method}" == 'direct' ]]; then
+    log_info "Connecting to $remote_env_name database directly from your machine"
+    MYSQL_PWD="$env_db_password" mysql -h "$env_db_host" -P "$env_db_port" -u "$env_db_username" "$env_db_name"
+  else
+    $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "MYSQL_PWD='$env_db_password' mysql -h $env_db_host -P $env_db_port -u $env_db_username $env_db_name && exec bash -l"
+  fi
 }
 
 download_db_dump() {
-  src="$env_user_ip_site_dir"
   dest="$local_db_dir"
 
-  log_info "Dumping $remote_env_name Database"
-  $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; MYSQL_PWD='$env_db_password' mysqldump -h $env_db_host -P $env_db_port --no-tablespaces -u $env_db_username $env_db_name | gzip -9 > $env_db_name.sql.gz;"
+  # Use --single-transaction to avoid LOCK TABLES (no LOCK TABLES privilege needed; consistent dump for InnoDB)
+  local mysqldump_opts="-h $env_db_host -P $env_db_port --no-tablespaces --single-transaction -u $env_db_username $env_db_name"
+  if [[ "${env_db_access_method}" == 'direct' ]]; then
+    log_info "Dumping $remote_env_name Database directly from your machine"
+    MYSQL_PWD="$env_db_password" mysqldump $mysqldump_opts | gzip -9 > "$local_db_dir/$env_db_name.sql.gz"
+  else
+    src="$env_user_ip_site_dir"
+    log_info "Dumping $remote_env_name Database (via environment server)"
+    $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; MYSQL_PWD='$env_db_password' mysqldump $mysqldump_opts | gzip -9 > $env_db_name.sql.gz;"
 
-  log_info "Downloading $remote_env_name Database to Local"
-  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$env_port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --include=$env_db_name".sql.gz" --exclude="*" --no-g --no-o --progress
+    log_info "Downloading $remote_env_name Database to Local"
+    rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$env_port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --include=$env_db_name".sql.gz" --exclude="*" --no-g --no-o --progress
 
-  log_info "Removing $remote_env_name Database from Remote"
-  $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; rm $env_db_name.sql.gz"
+    log_info "Removing $remote_env_name Database from Remote"
+    $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; rm $env_db_name.sql.gz"
+  fi
 
   # Split the file if it's larger than the specified size
-  if [ $(stat -c%s "$local_db_dir/$env_db_name.sql.gz") -gt $DB_SPLIT_SIZE ]; then
+  if [ -f "$local_db_dir/$env_db_name.sql.gz" ] && [ $(stat -c%s "$local_db_dir/$env_db_name.sql.gz") -gt $DB_SPLIT_SIZE ]; then
     log_info "Splitting $env_db_name.sql.gz because it is larger than ${DB_SPLIT_SIZE_MB}MB"
     split -b "${DB_SPLIT_SIZE_MB}m" "$local_db_dir/$env_db_name.sql.gz" "$local_db_dir/$env_db_name.sql.gz.part-"
     rm "$local_db_dir/$env_db_name.sql.gz"
@@ -111,6 +123,81 @@ import_db() {
     log_info "Deleting merged file $local_db_dir/$env_db_name.sql.gz after import because it is larger than ${DB_SPLIT_SIZE_MB}MB"
     rm "$local_db_dir/$env_db_name.sql.gz"
   fi
+}
+
+merge_db_dump_if_split() {
+  local dump_db_name="$1"
+
+  if ls "$local_db_dir/$dump_db_name.sql.gz.part-"* 1> /dev/null 2>&1; then
+    log_info "Merging split files for $dump_db_name.sql.gz because it is larger than ${DB_SPLIT_SIZE_MB}MB"
+    cat "$local_db_dir/$dump_db_name.sql.gz.part-"* > "$local_db_dir/$dump_db_name.sql.gz"
+  fi
+}
+
+cleanup_db_dump() {
+  local dump_db_name="$1"
+
+  rm -f "$local_db_dir/$dump_db_name.sql.gz"
+  rm -f "$local_db_dir/$dump_db_name.sql.gz.part-"*
+}
+
+import_db_dump_to_env() {
+  local dump_db_name="$1"
+
+  merge_db_dump_if_split "$dump_db_name"
+
+  if [[ ! -f "$local_db_dir/$dump_db_name.sql.gz" ]]; then
+    log_error "Database dump file not found: $local_db_dir/$dump_db_name.sql.gz"
+    exit 1
+  fi
+
+  if [[ "${env_db_access_method}" == 'direct' ]]; then
+    log_info "Importing database dump directly from your machine into $remote_env_name ($env_db_name)"
+    zcat "$local_db_dir/$dump_db_name.sql.gz" | awk 'NR==1 {if (/enable the sandbox mode/) next} {print}' | MYSQL_PWD="$env_db_password" mysql -h "$env_db_host" -P "$env_db_port" -u "$env_db_username" "$env_db_name"
+  else
+    log_info "Uploading database dump ($dump_db_name) to $remote_env_name"
+    rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$env_port" -iavz --no-times --no-perms --checksum "$local_db_dir/$dump_db_name.sql.gz" "$env_user_ip_site_dir" --no-g --no-o --progress
+
+    log_info "Importing database dump into $remote_env_name ($env_db_name)"
+    $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; gunzip < $dump_db_name.sql.gz | awk 'NR==1 {if (/enable the sandbox mode/) next} {print}' | MYSQL_PWD='$env_db_password' mysql -h $env_db_host -P $env_db_port -u $env_db_username $env_db_name"
+
+    log_info "Removing the uploaded database dump from $remote_env_name"
+    $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; rm $dump_db_name.sql.gz"
+  fi
+
+  if [[ -n $special_commands_after_upload_to_environment ]]; then
+    log_info "Running special commands after database import to $remote_env_name"
+    $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; $special_commands_after_upload_to_environment"
+  fi
+
+  cleanup_db_dump "$dump_db_name"
+}
+
+clone_db_env_to_env() {
+  local source_env="$1"
+  local dest_env="$2"
+  local source_db_name=""
+
+  if [[ "$source_env" == "$dest_env" ]]; then
+    log_error "Source and destination environments must be different."
+    exit 1
+  fi
+
+  local action_msg="clone the database from $source_env to $dest_env. This will replace the existing database on $dest_env"
+  if ! prompt_user_confirmation "$action_msg"; then
+    exit 1
+  fi
+
+  log_info "Step 1/2: Dumping database from $source_env"
+  set_remote_environment "$source_env"
+  source_db_name="$env_db_name"
+  download_db_dump
+
+  log_info "Step 2/2: Importing database into $dest_env"
+  set_remote_environment "$dest_env"
+  import_db_dump_to_env "$source_db_name"
+
+  log_info "Database cloned from $source_env to $dest_env successfully"
 }
 
 upload_db_to_env() {
@@ -163,6 +250,9 @@ main() {
       ;;
     --upload-db)
       upload_db_to_env
+      ;;
+    --clone-db)
+      clone_db_env_to_env "$2" "$3"
       ;;
     *)
       echo -e "${list_of_available_actions}"

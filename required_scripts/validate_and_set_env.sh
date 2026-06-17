@@ -65,40 +65,36 @@ combining_credentials_variables(){
     eval "${remote_env_name}_user_ip_site_dir=\$${remote_env_name}_user_ip':'\$${remote_env_name}_site_dir"
 }
 
-# Function: show_help
+# Function: validate_environment_name
 # Description:
-#   Displays usage instructions and available options.
-show_help() {
-  log_info 'Usage instructions and available options.'
-  echo "Usage: $0 <action> <environment>"
-  echo "Available actions: ${list_of_available_actions}"
-  echo "Available environments:"
-  printf '%s\n' "${environments[@]}"
+#   Validates that the given name exists in the environments array.
+validate_environment_name() {
+  local env_name="$1"
+  if printf '%s\0' "${environments[@]}" | grep -Fxqz -- "$env_name"; then
+    return 0
+  fi
+  log_error "There is no environment with this name ($env_name)."
+  return 1
 }
 
-# Main function
-main() {
-  # Check if both arguments are provided
-  if [[ "$1" == "--help" || -z "$1" || -z "$2" ]]; then
-    show_help
-    exit $ERROR_INVALID_ARGS
-  fi
+# Function: set_remote_environment
+# Description:
+#   Loads credentials for a named environment into env_* variables.
+set_remote_environment() {
+  local env_name="$1"
 
-  # Check if the second argument is a valid environment
-  if [[ ! -z "$2" ]] && printf '%s\0' "${environments[@]}" | grep -Fxqz -- "$2"; then
-    remote_env_name=$2
-  else
-    log_error "There is no environment with this name ($2)."
+  if ! validate_environment_name "$env_name"; then
     show_help
     exit $ERROR_INVALID_ENV
   fi
 
+  remote_env_name=$env_name
   combining_credentials_variables
 
-  # Check and set required environment variables
   check_and_set_env_var "port" true
   check_and_set_env_var "user_ip" true
   check_and_set_env_var "site_dir" true
+  check_and_set_env_var "db_access_method" false
   check_and_set_env_var "db_name" true
   check_and_set_env_var "db_host" true
   check_and_set_env_var "db_port" true
@@ -107,15 +103,54 @@ main() {
   check_and_set_env_var "user_ip_port" true
   check_and_set_env_var "user_ip_site_dir" true
 
-  # Check and set optional environment variables with special formats
   check_and_set_env_var "private_key" false "-i XX"
   check_and_set_env_var "private_key_password" false "sshpass -P passphrase -p XX"
   check_and_set_env_var "ssh_password" false "sshpass -p XX"
 
-  # Optional MongoDB variables (used by --download-mongo-db)
-  # Remote (environment) Mongo
   check_and_set_env_var "mongo_uri" false
   check_and_set_env_var "mongo_db" false
+}
+
+# Function: show_help
+# Description:
+#   Displays usage instructions and available options.
+show_help() {
+  log_info 'Usage instructions and available options.'
+  echo "Usage: $0 <action> <environment>"
+  echo "       $0 --clone-db <source_environment> <destination_environment>"
+  echo "Available actions: ${list_of_available_actions}"
+  echo "Available environments:"
+  printf '%s\n' "${environments[@]}"
+}
+
+# Main function
+main() {
+  if [[ "$1" == "--help" || -z "$1" ]]; then
+    show_help
+    exit $ERROR_INVALID_ARGS
+  fi
+
+  if [[ "$1" == "--clone-db" ]]; then
+    if [[ -z "$2" || -z "$3" ]]; then
+      log_error "--clone-db requires source and destination environments."
+      show_help
+      exit $ERROR_INVALID_ARGS
+    fi
+    for env_name in "$2" "$3"; do
+      if ! validate_environment_name "$env_name"; then
+        show_help
+        exit $ERROR_INVALID_ENV
+      fi
+    done
+    return 0
+  fi
+
+  if [[ -z "$2" ]]; then
+    show_help
+    exit $ERROR_INVALID_ARGS
+  fi
+
+  set_remote_environment "$2"
 }
 
 # Run the main function with provided arguments

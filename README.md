@@ -96,6 +96,7 @@ production_private_key_password='your_private_key_password'  # Remove if private
 production_site_dir='/var/www/your_site'
 
 # Database credentials
+production_db_access_method='direct'  # 'through_env' = dump via SSH on env server; 'direct' = dump from your machine (DB must be reachable)
 production_db_name='your_production_db'
 production_db_host='127.0.0.1'
 production_db_port='3306'
