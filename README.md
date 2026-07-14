@@ -145,8 +145,14 @@ production_ssh_password='sshpass -p your_ssh_password'
 # Upload only a specific path (relative to the site directory) to production
 ./deploy_rsync.sh --upload production wp-content/themes/my-theme
 
+# Upload multiple specific paths to production
+./deploy_rsync.sh --upload production wp-content/themes/my-theme wp-content/plugins/my-plugin
+
 # Download only a specific path from staging
 ./deploy_rsync.sh --download staging wp-content/uploads
+
+# Download multiple specific paths from staging
+./deploy_rsync.sh --download staging wp-content/uploads wp-content/themes/my-theme
 
 # SSH into production server
 ./deploy_rsync.sh --ssh production
@@ -168,7 +174,7 @@ production_ssh_password='sshpass -p your_ssh_password'
 
 ### 1. File Synchronization
 
-#### `--upload env [path]`
+#### `--upload env [path...]`
 - **Purpose**: Upload local application files to remote environment
 - **Process**: 
   - Performs dry-run first to show what will be uploaded
@@ -177,13 +183,13 @@ production_ssh_password='sshpass -p your_ssh_password'
   - Runs optional post-upload commands
 - **Flags**: `-iavz --no-times --no-perms --checksum --del`
 - **Exclusions**: Uses `rsync.ignore` file for file filtering
-- **Scoped sync (optional `path`)**: If a third argument is given, only that path (relative to the site directory, file or folder) is synced. `rsync.ignore` exclusions still apply within it, and `--del` only removes stale files inside the scoped path — everything outside it is left untouched.
+- **Scoped sync (optional `path...`)**: Any arguments after `env` are treated as relative paths (file or folder) to sync — pass one or several, space-separated. `rsync.ignore` exclusions still apply within them, and `--del` only removes stale files inside the scoped paths — everything outside them is left untouched.
 
-#### `--download env [path]`
+#### `--download env [path...]`
 - **Purpose**: Download remote application files to local machine
 - **Process**: Same as upload but in reverse direction
 - **Use Case**: Backup remote site, sync changes from production
-- **Scoped sync (optional `path`)**: Same behavior as `--upload`'s optional path — restricts the download to a single relative path.
+- **Scoped sync (optional `path...`)**: Same behavior as `--upload`'s optional paths — restricts the download to one or more relative paths.
 
 ### 2. Server Access
 

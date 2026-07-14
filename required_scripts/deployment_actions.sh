@@ -26,27 +26,31 @@ prompt_user_confirmation() {
 # Function: build_scoped_filters
 # Description:
 #   Populates the global SCOPED_FILTERS array with rsync --include/--exclude
-#   rules that restrict a sync to a single relative path (file or directory),
-#   while still letting rules that come before it (e.g. --exclude-from) win.
-#   Ancestor directories must be explicitly included or rsync won't descend
-#   into them to reach the target path.
+#   rules that restrict a sync to one or more relative paths (file or
+#   directory), while still letting rules that come before it (e.g.
+#   --exclude-from) win. Ancestor directories must be explicitly included or
+#   rsync won't descend into them to reach the target paths.
 build_scoped_filters() {
-  local rel_path="$1"
-  rel_path="${rel_path#/}"
-  rel_path="${rel_path%/}"
-
   SCOPED_FILTERS=()
-  local accum=""
-  local part
-  local IFS='/'
-  local parts=($rel_path)
-  unset IFS
-  for part in "${parts[@]}"; do
-    accum="${accum:+$accum/}$part"
-    SCOPED_FILTERS+=(--include="$accum/")
+  local rel_path
+
+  for rel_path in "$@"; do
+    rel_path="${rel_path#/}"
+    rel_path="${rel_path%/}"
+    [[ -z "$rel_path" ]] && continue
+
+    local accum=""
+    local part
+    local IFS='/'
+    local parts=($rel_path)
+    unset IFS
+    for part in "${parts[@]}"; do
+      accum="${accum:+$accum/}$part"
+      SCOPED_FILTERS+=(--include="$accum/")
+    done
+    SCOPED_FILTERS+=(--include="$rel_path")
+    SCOPED_FILTERS+=(--include="$rel_path/***")
   done
-  SCOPED_FILTERS+=(--include="$rel_path")
-  SCOPED_FILTERS+=(--include="$rel_path/***")
   SCOPED_FILTERS+=(--exclude=*)
 }
 
@@ -56,12 +60,15 @@ rsync_action() {
   local dest="$3"
   local port="$4"
   local action_msg="$5"
-  local rel_path="$6"
+  shift 5
+  local rel_paths=("$@")
 
   SCOPED_FILTERS=()
-  if [[ -n "$rel_path" ]]; then
-    build_scoped_filters "$rel_path"
-    action_msg="$action_msg (path: $rel_path)"
+  if [[ ${#rel_paths[@]} -gt 0 ]]; then
+    build_scoped_filters "${rel_paths[@]}"
+    local joined_paths
+    joined_paths=$(IFS=', '; echo "${rel_paths[*]}")
+    action_msg="$action_msg (path(s): $joined_paths)"
   fi
 
   # Rsync with dry run option
@@ -265,10 +272,10 @@ upload_db_to_env() {
 main() {
   case $1 in
     --upload)
-      rsync_action "upload" "$local_site_dir" "$env_user_ip_site_dir" "$env_port" "Upload Local Site to $2" "$3"
+      rsync_action "upload" "$local_site_dir" "$env_user_ip_site_dir" "$env_port" "Upload Local Site to $2" "${@:3}"
       ;;
     --download)
-      rsync_action "download" "$env_user_ip_site_dir" "$local_site_dir" "$env_port" "Download $2 Site to Local" "$3"
+      rsync_action "download" "$env_user_ip_site_dir" "$local_site_dir" "$env_port" "Download $2 Site to Local" "${@:3}"
       ;;
     --ssh)
       execute_ssh_command

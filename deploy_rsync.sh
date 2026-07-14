@@ -3,8 +3,8 @@ set -e
 
 # Define the list of available actions
 list_of_available_actions='List of actions:
-1. --upload env [path] (Upload Local Site to env, optionally restricted to a single relative path)
-2. --download env [path] (Download env Site to Local, optionally restricted to a single relative path)
+1. --upload env [path...] (Upload Local Site to env, optionally restricted to one or more relative paths)
+2. --download env [path...] (Download env Site to Local, optionally restricted to one or more relative paths)
 3. --ssh env (To enter the env server via ssh)
 4. --db env (To enter the env database shell)
 5. --download-db env (Download the env database to Local and remove it from the remote after the download is finished)
