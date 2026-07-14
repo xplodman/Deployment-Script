@@ -23,16 +23,50 @@ prompt_user_confirmation() {
   esac
 }
 
+# Function: build_scoped_filters
+# Description:
+#   Populates the global SCOPED_FILTERS array with rsync --include/--exclude
+#   rules that restrict a sync to a single relative path (file or directory),
+#   while still letting rules that come before it (e.g. --exclude-from) win.
+#   Ancestor directories must be explicitly included or rsync won't descend
+#   into them to reach the target path.
+build_scoped_filters() {
+  local rel_path="$1"
+  rel_path="${rel_path#/}"
+  rel_path="${rel_path%/}"
+
+  SCOPED_FILTERS=()
+  local accum=""
+  local part
+  local IFS='/'
+  local parts=($rel_path)
+  unset IFS
+  for part in "${parts[@]}"; do
+    accum="${accum:+$accum/}$part"
+    SCOPED_FILTERS+=(--include="$accum/")
+  done
+  SCOPED_FILTERS+=(--include="$rel_path")
+  SCOPED_FILTERS+=(--include="$rel_path/***")
+  SCOPED_FILTERS+=(--exclude=*)
+}
+
 rsync_action() {
   local action_type="$1"
   local src="$2"
   local dest="$3"
   local port="$4"
   local action_msg="$5"
+  local rel_path="$6"
+
+  SCOPED_FILTERS=()
+  if [[ -n "$rel_path" ]]; then
+    build_scoped_filters "$rel_path"
+    action_msg="$action_msg (path: $rel_path)"
+  fi
 
   # Rsync with dry run option
   log_info "[Dry Run] $action_msg : $dest"
-  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" --stats --no-g --no-o --dry-run
+  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" "${SCOPED_FILTERS[@]}" --stats --no-g --no-o --dry-run
 
   # Confirm action with user
   if ! prompt_user_confirmation "$action_msg"; then
@@ -40,7 +74,7 @@ rsync_action() {
   fi
 
   # Rsync
-  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" --stats --no-g --no-o --progress
+  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" "${SCOPED_FILTERS[@]}" --stats --no-g --no-o --progress
 
   if [[ -n $special_commands_after_upload_to_environment ]]; then
     log_info "Running special commands after import upload to environment"
@@ -231,10 +265,10 @@ upload_db_to_env() {
 main() {
   case $1 in
     --upload)
-      rsync_action "upload" "$local_site_dir" "$env_user_ip_site_dir" "$env_port" "Upload Local Site to $2"
+      rsync_action "upload" "$local_site_dir" "$env_user_ip_site_dir" "$env_port" "Upload Local Site to $2" "$3"
       ;;
     --download)
-      rsync_action "download" "$env_user_ip_site_dir" "$local_site_dir" "$env_port" "Download $2 Site to Local"
+      rsync_action "download" "$env_user_ip_site_dir" "$local_site_dir" "$env_port" "Download $2 Site to Local" "$3"
       ;;
     --ssh)
       execute_ssh_command

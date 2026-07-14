@@ -142,6 +142,12 @@ production_ssh_password='sshpass -p your_ssh_password'
 # Download staging site to local
 ./deploy_rsync.sh --download staging
 
+# Upload only a specific path (relative to the site directory) to production
+./deploy_rsync.sh --upload production wp-content/themes/my-theme
+
+# Download only a specific path from staging
+./deploy_rsync.sh --download staging wp-content/uploads
+
 # SSH into production server
 ./deploy_rsync.sh --ssh production
 
@@ -162,7 +168,7 @@ production_ssh_password='sshpass -p your_ssh_password'
 
 ### 1. File Synchronization
 
-#### `--upload env`
+#### `--upload env [path]`
 - **Purpose**: Upload local application files to remote environment
 - **Process**: 
   - Performs dry-run first to show what will be uploaded
@@ -171,11 +177,13 @@ production_ssh_password='sshpass -p your_ssh_password'
   - Runs optional post-upload commands
 - **Flags**: `-iavz --no-times --no-perms --checksum --del`
 - **Exclusions**: Uses `rsync.ignore` file for file filtering
+- **Scoped sync (optional `path`)**: If a third argument is given, only that path (relative to the site directory, file or folder) is synced. `rsync.ignore` exclusions still apply within it, and `--del` only removes stale files inside the scoped path — everything outside it is left untouched.
 
-#### `--download env`
+#### `--download env [path]`
 - **Purpose**: Download remote application files to local machine
 - **Process**: Same as upload but in reverse direction
 - **Use Case**: Backup remote site, sync changes from production
+- **Scoped sync (optional `path`)**: Same behavior as `--upload`'s optional path — restricts the download to a single relative path.
 
 ### 2. Server Access
 
