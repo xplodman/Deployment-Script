@@ -104,12 +104,20 @@ execute_db_command() {
 
 download_db_dump() {
   dest="$local_db_dir"
+  local start_time=$SECONDS
+
+  log_info "Starting database download for $remote_env_name ($env_db_name)"
 
   # Use --single-transaction to avoid LOCK TABLES (no LOCK TABLES privilege needed; consistent dump for InnoDB)
   local mysqldump_opts="-h $env_db_host -P $env_db_port --no-tablespaces --single-transaction -u $env_db_username $env_db_name"
   if [[ "${env_db_access_method}" == 'direct' ]]; then
     log_info "Dumping $remote_env_name Database directly from your machine"
     MYSQL_PWD="$env_db_password" mysqldump $mysqldump_opts | gzip -9 > "$local_db_dir/$env_db_name.sql.gz"
+    if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+      log_error "mysqldump failed while dumping $remote_env_name Database ($env_db_name)"
+      exit 1
+    fi
+    log_info "Dump complete, saved to $local_db_dir/$env_db_name.sql.gz"
   else
     src="$env_user_ip_site_dir"
     log_info "Dumping $remote_env_name Database (via environment server)"
@@ -128,6 +136,11 @@ download_db_dump() {
     split -b "${DB_SPLIT_SIZE_MB}m" "$local_db_dir/$env_db_name.sql.gz" "$local_db_dir/$env_db_name.sql.gz.part-"
     rm "$local_db_dir/$env_db_name.sql.gz"
   fi
+
+  local elapsed=$((SECONDS - start_time))
+  local total_size
+  total_size=$(du -ch "$local_db_dir"/"$env_db_name".sql.gz* 2>/dev/null | tail -1 | cut -f1)
+  log_info "Finished downloading $remote_env_name Database ($env_db_name) in ${elapsed}s (${total_size:-unknown size})"
 }
 
 import_db() {
