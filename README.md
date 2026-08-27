@@ -151,6 +151,10 @@ special_commands_after_upload_to_environment=''
 
 # Database split threshold (in MB) for Git compatibility
 db_split_threshold=60
+
+# Optional: local MongoDB target (used by --download-mongo-db), remove both lines if unused
+local_mongo_uri='mongodb://localhost:27017'
+local_mongo_db='your_local_mongo_database'
 ```
 
 ### 2. Environment-Specific Configuration
@@ -173,6 +177,10 @@ production_db_host='127.0.0.1'
 production_db_port='3306'
 production_db_username='your_db_user'
 production_db_password='your_db_password'
+
+# Optional: remote MongoDB source (used by --download-mongo-db), remove both lines if unused
+production_mongo_uri='mongodb://mongo_host:27017'
+production_mongo_db='your_production_mongo_db'
 ```
 
 ### 3. Authentication Methods
@@ -239,6 +247,12 @@ production_ssh_password='sshpass -p your_ssh_password'
 
 # Upload local database to staging
 ./deploy_rsync.sh --upload-db staging
+
+# Clone database from staging to production
+./deploy_rsync.sh --clone-db staging production
+
+# Clone remote MongoDB database to local MongoDB
+./deploy_rsync.sh --download-mongo-db production
 ```
 
 ## 🔄 Available Actions
@@ -308,6 +322,23 @@ production_ssh_password='sshpass -p your_ssh_password'
   - Imports database on remote server
   - Cleans up temporary files
 - **Warning**: **This will replace the existing remote database!**
+
+#### `--clone-db source_env dest_env`
+- **Purpose**: Clone the MySQL/MariaDB database from one environment directly to another (no local database involved)
+- **Process**:
+  - Prompts for confirmation before proceeding
+  - Dumps the database from `source_env` (same logic as `--download-db`)
+  - Imports that dump into `dest_env` (same logic as uploading a dump), then cleans it up
+- **Warning**: **This will replace the existing database on `dest_env`!**
+
+#### `--download-mongo-db env`
+- **Purpose**: Clone a remote MongoDB database into your local MongoDB
+- **Requires**: `mongosh`, `mongodump`, and `mongorestore` available locally; `<env>_mongo_uri` / `<env>_mongo_db` set for the remote environment and `local_mongo_uri` / `local_mongo_db` set locally (see [Configuration](#configuration))
+- **Process**:
+  - Prompts for confirmation (this **drops** the local target database first)
+  - Drops the local MongoDB database
+  - Streams `mongodump` from the remote URI directly into `mongorestore` on the local URI (no intermediate dump file)
+- **Warning**: **This will replace the existing local MongoDB database!**
 
 ## 📁 File Exclusions
 
