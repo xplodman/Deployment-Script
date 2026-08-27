@@ -17,6 +17,7 @@ A comprehensive Bash-based deployment automation tool for web applications that 
 
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
+- [Using It Across Multiple Projects (Symlinks)](#-using-it-across-multiple-projects-symlinks)
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Available Actions](#available-actions)
@@ -56,6 +57,76 @@ Before using this deployment script, ensure you have:
    ```
 
 4. **Configure your environments** (see [Configuration](#configuration) section)
+
+## 🔗 Using It Across Multiple Projects (Symlinks)
+
+Keep **one clone** of this repo as the single source of truth, then symlink the shared script files into each project that needs it. Any fix or feature you commit here (like the logging improvements) instantly applies to every linked project — no copy/paste, no drift.
+
+### What to link vs. what to keep local
+
+| File | Link or keep local? | Why |
+|---|---|---|
+| `deploy_rsync.sh` | 🔗 Symlink | Shared entrypoint, identical everywhere |
+| `required_scripts/deployment_actions.sh` | 🔗 Symlink | Shared logic (rsync/db actions) |
+| `required_scripts/validate_and_set_env.sh` | 🔗 Symlink | Shared logic (env validation) |
+| `required_scripts/credentials.sh` | 🚫 Keep local | Real secrets — per-project, never shared/committed |
+| `required_scripts/rsync.ignore` | 🚫 Keep local | Exclusion rules are usually project-specific (e.g. framework, storage paths differ per app) |
+
+### One-time setup
+
+Clone this repo once, somewhere central, e.g.:
+
+```bash
+git clone https://github.com/xplodman/Deployment-Script.git ~/Projects/Deployment-Script
+```
+
+### Link it into a project
+
+Run from the root of the target project (adjust the source path if you cloned it elsewhere):
+
+```bash
+SRC=~/Projects/Deployment-Script
+
+# Remove any existing local copies first (back them up if they have project-specific changes)
+rm -f deploy_rsync.sh required_scripts/deployment_actions.sh required_scripts/validate_and_set_env.sh
+
+mkdir -p required_scripts
+
+ln -s "$SRC/deploy_rsync.sh" deploy_rsync.sh
+ln -s "$SRC/required_scripts/deployment_actions.sh" required_scripts/deployment_actions.sh
+ln -s "$SRC/required_scripts/validate_and_set_env.sh" required_scripts/validate_and_set_env.sh
+```
+
+Then set up the project-local files that must **not** be linked:
+
+```bash
+# Only if credentials.sh doesn't already exist for this project
+[ -f required_scripts/credentials.sh ] || cp "$SRC/required_scripts/default_credentials.sh" required_scripts/credentials.sh
+
+# rsync.ignore: copy once as a starting point, then customize per project
+[ -f required_scripts/rsync.ignore ] || cp "$SRC/required_scripts/rsync.ignore" required_scripts/rsync.ignore
+```
+
+Verify the links resolve and the script runs:
+
+```bash
+ls -la deploy_rsync.sh required_scripts/
+bash deploy_rsync.sh --help
+```
+
+### Updating all linked projects
+
+Pull (or make/commit/push) changes once, here in this repo — every project holding a symlink picks it up immediately, with nothing to run in the other projects:
+
+```bash
+cd ~/Projects/Deployment-Script
+git pull
+```
+
+### Notes
+
+- If the target project is itself a git repo, the symlinks are committed as symlinks (small pointer files) — collaborators cloning that repo will need this same `Deployment-Script` repo cloned at the matching path for the links to resolve. If that's not desirable, copy the files instead of symlinking.
+- `credentials.sh` and `rsync.ignore` are excluded from linking on purpose — `credentials.sh` holds secrets and must never be shared/committed, and `rsync.ignore` usually needs per-project exclusion rules.
 
 ## ⚙️ Configuration
 
