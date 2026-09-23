@@ -1,1 +1,13 @@
 /.idea/
+
+# Local Claude Code / Ruflo state
+/.claude/
+/.claude-flow/
+
+# Real credentials (only default_credentials.sh is a template)
+/required_scripts/credentials.sh
+
+# Database dumps
+*.sql
+*.sql.gz
+*.sql.gz.part-*
