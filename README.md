@@ -239,6 +239,10 @@ production_ssh_password='sshpass -p your_ssh_password'
 # Access production database shell
 ./deploy_rsync.sh --db production
 
+# Run a one-off command / SQL query (non-interactive, handy for scripts and Claude Code)
+./deploy_rsync.sh --ssh production "tail -n 100 storage/logs/laravel.log"
+./deploy_rsync.sh --db production "SELECT id, email FROM users LIMIT 10"
+
 # Download production database to local
 ./deploy_rsync.sh --download-db production
 
@@ -278,12 +282,13 @@ production_ssh_password='sshpass -p your_ssh_password'
 
 ### 2. Server Access
 
-#### `--ssh env`
+#### `--ssh env ["command"]`
 - **Purpose**: SSH into remote environment server
 - **Features**: 
   - Automatically navigates to site directory
   - Provides interactive bash shell
   - Uses configured SSH credentials
+  - **Optional command**: when given, runs it in the site directory without a TTY and exits
 
 #### `--db env`
 - **Purpose**: Access remote database shell
@@ -291,6 +296,7 @@ production_ssh_password='sshpass -p your_ssh_password'
   - Connects directly to MySQL/MariaDB
   - Uses environment-specific database credentials
   - Provides interactive database shell
+  - **Optional SQL query**: when given, runs it non-interactively (tab-separated output) and exits
 
 ### 3. Database Operations
 
@@ -339,6 +345,16 @@ production_ssh_password='sshpass -p your_ssh_password'
   - Drops the local MongoDB database
   - Streams `mongodump` from the remote URI directly into `mongorestore` on the local URI (no intermediate dump file)
 - **Warning**: **This will replace the existing local MongoDB database!**
+
+## 🤖 Claude Code Integration
+
+`claude/skills/deploy-script/SKILL.md` teaches Claude Code how to use this script in any project that has it: discovering environments, running remote commands and SQL queries through `--ssh`/`--db`, and leaving destructive or prompted actions to you. It also tells Claude never to read `credentials.sh`.
+
+Install it once for every project by symlinking it into your user skills:
+
+```bash
+ln -s ~/Projects/Deployment-Script/claude/skills/deploy-script ~/.claude/skills/deploy-script
+```
 
 ## 📁 File Exclusions
 

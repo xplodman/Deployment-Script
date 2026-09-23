@@ -89,16 +89,40 @@ rsync_action() {
   fi
 }
 
+# Function: execute_ssh_command
+# Description:
+#   With no arguments, opens an interactive shell in the site directory.
+#   With arguments, runs them as a one-off command in the site directory
+#   (non-interactive, no TTY) and exits with the remote command's status.
 execute_ssh_command() {
-  $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir && exec bash -l"
+  if [[ $# -gt 0 ]]; then
+    $env_private_key_password $env_ssh_password ssh $env_user_ip_port $env_private_key "cd $env_site_dir && $*"
+  else
+    $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir && exec bash -l"
+  fi
 }
 
+# Function: execute_db_command
+# Description:
+#   With no arguments, opens an interactive database shell.
+#   With arguments, runs them as a one-off SQL query (non-interactive, batch
+#   output) and exits. The query is sent over stdin so it needs no extra
+#   quoting for the remote shell.
 execute_db_command() {
+  local query="$*"
   if [[ "${env_db_access_method}" == 'direct' ]]; then
-    log_info "Connecting to $remote_env_name database directly from your machine"
-    MYSQL_PWD="$env_db_password" mysql -h "$env_db_host" -P "$env_db_port" -u "$env_db_username" "$env_db_name"
+    if [[ -n "$query" ]]; then
+      MYSQL_PWD="$env_db_password" mysql -h "$env_db_host" -P "$env_db_port" -u "$env_db_username" "$env_db_name" <<< "$query"
+    else
+      log_info "Connecting to $remote_env_name database directly from your machine"
+      MYSQL_PWD="$env_db_password" mysql -h "$env_db_host" -P "$env_db_port" -u "$env_db_username" "$env_db_name"
+    fi
   else
-    $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "MYSQL_PWD='$env_db_password' mysql -h $env_db_host -P $env_db_port -u $env_db_username $env_db_name && exec bash -l"
+    if [[ -n "$query" ]]; then
+      $env_private_key_password $env_ssh_password ssh $env_user_ip_port $env_private_key "MYSQL_PWD='$env_db_password' mysql -h $env_db_host -P $env_db_port -u $env_db_username $env_db_name" <<< "$query"
+    else
+      $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "MYSQL_PWD='$env_db_password' mysql -h $env_db_host -P $env_db_port -u $env_db_username $env_db_name && exec bash -l"
+    fi
   fi
 }
 
@@ -311,10 +335,10 @@ main() {
       rsync_action "download" "$env_user_ip_site_dir" "$local_site_dir" "$env_port" "Download $2 Site to Local" "${@:3}"
       ;;
     --ssh)
-      execute_ssh_command
+      execute_ssh_command "${@:3}"
       ;;
     --db)
-      execute_db_command
+      execute_db_command "${@:3}"
       ;;
     --download-db)
       download_db_dump
