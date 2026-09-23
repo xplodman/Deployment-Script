@@ -272,6 +272,7 @@ production_ssh_password='sshpass -p your_ssh_password'
   - Runs optional post-upload commands
 - **Flags**: `-iavz --no-times --no-perms --checksum --del`
 - **Exclusions**: Uses `rsync.ignore` file for file filtering
+- **Flags (optional, anywhere after `env`)**: `--dry-run` shows the dry run and stops; `--yes` skips the confirmation prompt (used by Claude Code after you approve the dry run in chat).
 - **Scoped sync (optional `path...`)**: Any arguments after `env` are treated as relative paths (file or folder) to sync — pass one or several, space-separated. `rsync.ignore` exclusions still apply within them, and `--del` only removes stale files inside the scoped paths — everything outside them is left untouched.
 
 #### `--download env [path...]`

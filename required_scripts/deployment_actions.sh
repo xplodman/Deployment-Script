@@ -61,7 +61,21 @@ rsync_action() {
   local port="$4"
   local action_msg="$5"
   shift 5
-  local rel_paths=("$@")
+
+  # Optional flags mixed in with the paths:
+  #   --dry-run  show the dry run and stop
+  #   --yes      skip the confirmation prompt (for non-interactive callers)
+  local dry_run_only=false
+  local assume_yes=false
+  local rel_paths=()
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      --dry-run) dry_run_only=true ;;
+      --yes) assume_yes=true ;;
+      *) rel_paths+=("$arg") ;;
+    esac
+  done
 
   SCOPED_FILTERS=()
   if [[ ${#rel_paths[@]} -gt 0 ]]; then
@@ -75,8 +89,15 @@ rsync_action() {
   log_info "[Dry Run] $action_msg : $dest"
   rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" "${SCOPED_FILTERS[@]}" --stats --no-g --no-o --dry-run
 
+  if [[ "$dry_run_only" == true ]]; then
+    log_info "Dry run only, nothing was transferred."
+    return 0
+  fi
+
   # Confirm action with user
-  if ! prompt_user_confirmation "$action_msg"; then
+  if [[ "$assume_yes" == true ]]; then
+    log_info "Confirmation skipped (--yes): $action_msg"
+  elif ! prompt_user_confirmation "$action_msg"; then
     exit 1
   fi
 
