@@ -2,6 +2,8 @@
 
 A comprehensive Bash-based deployment automation tool for web applications that streamlines deployments across multiple environments (production, staging, etc.). This script provides a robust command-line interface for file synchronization, database management, and server access operations.
 
+> **Credits:** This deployment script is originally based on the work of [@bafi](https://github.com/bafi).
+
 ## 🚀 Features
 
 - **File Synchronization**: Upload/download application files between local and remote environments using rsync
@@ -482,6 +484,11 @@ Contributions are welcome! Please:
 - Include logging for all operations
 - Test with multiple environments
 - Update documentation for new features
+
+### Contributors
+
+- [@bafi](https://github.com/bafi): original author of the deployment script
+- [@xplodman](https://github.com/xplodman)
 
 ## 📄 License
 
