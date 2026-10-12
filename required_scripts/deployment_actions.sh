@@ -189,7 +189,7 @@ download_db_dump() {
 }
 
 import_db() {
-  DB_EXIST=$(MYSQL_PWD=$local_db_password mysqlshow --user=$local_db_username $local_db_name | grep -v Wildcard | grep -o $local_db_name)
+  DB_EXIST=$(MYSQL_PWD=$local_db_password mysqlshow --user=$local_db_username $local_db_name 2>/dev/null | grep -v Wildcard | grep -o $local_db_name || true)
 
   if [ "$DB_EXIST" == "$local_db_name" ]; then
     if ! prompt_user_confirmation "drop and recreate the existing ($local_db_name) database"; then
