@@ -63,19 +63,28 @@ rsync_action() {
   shift 5
 
   # Optional flags mixed in with the paths:
-  #   --dry-run  show the dry run and stop
-  #   --yes      skip the confirmation prompt (for non-interactive callers)
+  #   --dry-run     show the dry run and stop
+  #   --yes         skip the confirmation prompt (for non-interactive callers)
+  #   --skip-ignore skip applying rsync.ignore exclusions (default: false, ie. ignore file is applied)
   local dry_run_only=false
   local assume_yes=false
+  local skip_ignore=false
   local rel_paths=()
   local arg
   for arg in "$@"; do
     case "$arg" in
       --dry-run) dry_run_only=true ;;
       --yes) assume_yes=true ;;
+      --skip-ignore) skip_ignore=true ;;
       *) rel_paths+=("$arg") ;;
     esac
   done
+
+  local ignore_filters=(--exclude-from="$RSYNC_IGNORE_FILE")
+  if [[ "$skip_ignore" == true ]]; then
+    ignore_filters=()
+    action_msg="$action_msg (rsync.ignore skipped)"
+  fi
 
   SCOPED_FILTERS=()
   if [[ ${#rel_paths[@]} -gt 0 ]]; then
@@ -87,7 +96,7 @@ rsync_action() {
 
   # Rsync with dry run option
   log_info "[Dry Run] $action_msg : $dest"
-  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" "${SCOPED_FILTERS[@]}" --stats --no-g --no-o --dry-run
+  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" "${ignore_filters[@]}" "${SCOPED_FILTERS[@]}" --stats --no-g --no-o --dry-run
 
   if [[ "$dry_run_only" == true ]]; then
     log_info "Dry run only, nothing was transferred."
@@ -102,7 +111,7 @@ rsync_action() {
   fi
 
   # Rsync
-  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" --exclude-from="$RSYNC_IGNORE_FILE" "${SCOPED_FILTERS[@]}" --stats --no-g --no-o --progress
+  rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$port" -iavz --no-times --no-perms --checksum --del "$src"/ "$dest" "${ignore_filters[@]}" "${SCOPED_FILTERS[@]}" --stats --no-g --no-o --progress
 
   if [[ -n $special_commands_after_upload_to_environment ]]; then
     log_info "Running special commands after import upload to environment"
