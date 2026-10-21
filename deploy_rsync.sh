@@ -8,7 +8,7 @@ list_of_available_actions='List of actions:
 3. --ssh env ["command"] (To enter the env server via ssh, or run a one-off command in the site directory)
 4. --db env ["SQL query"] (To enter the env database shell, or run a one-off SQL query)
 5. --download-db env (Download the env database to Local and remove it from the remote after the download is finished)
-6. --import-db env (Import the env database to Local)
+6. --import-db env [--yes] (Import the env database to Local; --yes skips the confirmation prompt)
 7. --upload-db env (Upload Local database to env)
 8. --clone-db source_env dest_env (Clone database from one environment to another)
 9. --download-mongo-db env (Clone a remote MongoDB database to local MongoDB)'

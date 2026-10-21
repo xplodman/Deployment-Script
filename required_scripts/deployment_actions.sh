@@ -198,10 +198,21 @@ download_db_dump() {
 }
 
 import_db() {
+  # Optional flag: --yes skips the confirmation prompt (for non-interactive callers)
+  local assume_yes=false
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      --yes) assume_yes=true ;;
+    esac
+  done
+
   DB_EXIST=$(MYSQL_PWD=$local_db_password mysqlshow --user=$local_db_username $local_db_name 2>/dev/null | grep -v Wildcard | grep -o $local_db_name || true)
 
   if [ "$DB_EXIST" == "$local_db_name" ]; then
-    if ! prompt_user_confirmation "drop and recreate the existing ($local_db_name) database"; then
+    if [[ "$assume_yes" == true ]]; then
+      log_info "Confirmation skipped (--yes): drop and recreate the existing ($local_db_name) database"
+    elif ! prompt_user_confirmation "drop and recreate the existing ($local_db_name) database"; then
       exit 1
     fi
 
@@ -374,7 +385,7 @@ main() {
       download_db_dump
       ;;
     --import-db)
-      import_db
+      import_db "${@:3}"
       ;;
     --upload-db)
       upload_db_to_env
