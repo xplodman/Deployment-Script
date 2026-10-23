@@ -353,13 +353,24 @@ download_mongo_db() {
   local target_uri="${local_mongo_uri}"
   local target_db="${local_mongo_db}"
 
+  # Optional flag: --yes skips the confirmation prompt (for non-interactive callers)
+  local assume_yes=false
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      --yes) assume_yes=true ;;
+    esac
+  done
+
   if [[ -z "$source_uri" || -z "$source_db" || -z "$target_uri" || -z "$target_db" ]]; then
     log_error "MongoDB variables are missing. Ensure <env>_mongo_uri, <env>_mongo_db, local_mongo_uri, and local_mongo_db are set."
     exit 1
   fi
 
   local action_msg="drop local MongoDB database ($target_db) and clone from ($source_db) at ($source_uri)"
-  if ! prompt_user_confirmation "$action_msg"; then
+  if [[ "$assume_yes" == true ]]; then
+    log_info "Confirmation skipped (--yes): $action_msg"
+  elif ! prompt_user_confirmation "$action_msg"; then
     exit 1
   fi
 
@@ -394,7 +405,7 @@ main() {
       clone_db_env_to_env "$2" "$3"
       ;;
     --download-mongo-db)
-      download_mongo_db
+      download_mongo_db "${@:3}"
       ;;
     *)
       echo -e "${list_of_available_actions}"

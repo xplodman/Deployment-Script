@@ -11,7 +11,7 @@ list_of_available_actions='List of actions:
 6. --import-db env [--yes] (Import the env database to Local; --yes skips the confirmation prompt)
 7. --upload-db env (Upload Local database to env)
 8. --clone-db source_env dest_env (Clone database from one environment to another)
-9. --download-mongo-db env (Clone a remote MongoDB database to local MongoDB)'
+9. --download-mongo-db env [--yes] (Clone a remote MongoDB database to local MongoDB; --yes skips the confirmation prompt)'
 
 # Source the credentials file which contains environment-specific variables
 . required_scripts/credentials.sh
