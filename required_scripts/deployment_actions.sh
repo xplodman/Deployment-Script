@@ -374,8 +374,38 @@ download_mongo_db() {
     exit 1
   fi
 
-  log_info "Dropping local database ($target_db) and cloning from ($source_uri/$source_db) to ($target_uri/$target_db)"
-  /bin/bash -c "mongosh ${target_uri}/${target_db} --eval 'db.dropDatabase()' && mongodump --uri='${source_uri}' --db='${source_db}' --archive --gzip | mongorestore --uri='${target_uri}' --archive --gzip --nsFrom='${source_db}.*' --nsTo='${target_db}.*'"
+  log_info "Dropping local database ($target_db)"
+  mongosh "${target_uri}/${target_db}" --quiet --eval 'db.dropDatabase()' >/dev/null
+
+  if [[ "${env_mongo_access_method}" == 'direct' ]]; then
+    log_info "Cloning MongoDB directly from ($source_uri/$source_db) to ($target_uri/$target_db)"
+    mongodump --uri="${source_uri}" --db="${source_db}" --archive --gzip | mongorestore --uri="${target_uri}" --archive --gzip --nsFrom="${source_db}.*" --nsTo="${target_db}.*"
+  else
+    # Default: the MongoDB host is usually only reachable from inside the remote
+    # environment's own network, not from this machine (and a port-forwarded SSH
+    # tunnel is too unreliable for bulk transfers over that path), so dump it on
+    # the remote app server itself (same network as the DB) and pull the archive
+    # down, mirroring the --download-db MySQL flow. Requires mongodump/mongorestore
+    # to be installed on the remote server.
+    local remote_archive="${source_db}.archive.gz"
+
+    log_info "Dumping $remote_env_name MongoDB ($source_db) on the remote server"
+    $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; mongodump --uri='${source_uri}' --db='${source_db}' --archive=${remote_archive} --gzip"
+
+    log_info "Downloading MongoDB archive from $remote_env_name to Local"
+    rsync --rsh="$env_private_key_password $env_ssh_password ssh $env_private_key -p$env_port" -iavz --no-times --no-perms --checksum "$env_user_ip_site_dir/${remote_archive}" "$local_db_dir/" --no-g --no-o --progress
+
+    log_info "Removing MongoDB archive from $remote_env_name"
+    $env_private_key_password $env_ssh_password ssh $env_user_ip_port -t $env_private_key "cd $env_site_dir; rm -f ${remote_archive}"
+
+    log_info "Restoring MongoDB archive into local ($target_db)"
+    mongorestore --uri="${target_uri}" --archive="$local_db_dir/${remote_archive}" --gzip --nsFrom="${source_db}.*" --nsTo="${target_db}.*"
+
+    log_info "Cleaning up local archive file"
+    rm -f "$local_db_dir/${remote_archive}"
+  fi
+
+  log_info "Finished cloning MongoDB ($source_db) into local ($target_db)"
 }
 
 main() {

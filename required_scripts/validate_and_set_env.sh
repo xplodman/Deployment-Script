@@ -109,6 +109,7 @@ set_remote_environment() {
 
   check_and_set_env_var "mongo_uri" false
   check_and_set_env_var "mongo_db" false
+  check_and_set_env_var "mongo_access_method" false
 }
 
 # Function: show_help
